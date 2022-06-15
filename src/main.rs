@@ -145,7 +145,7 @@ fn main() {
                 if game.board.cells[game.board.selected].is_mine {
                     game.board.cells[game.board.selected].is_revealed = true;
                     render(&mut game);
-                    println!("You suck!");
+                    println!("You lost!");
                     break;
                 } else {
                     game.board.cells[game.board.selected].is_revealed = true;
