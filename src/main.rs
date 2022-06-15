@@ -1,5 +1,4 @@
 use std::io;
-use std::cmp::min;
 use std::fmt::Display;
 use crate::io::stdout;
 use crate::io::stdin;
@@ -88,18 +87,6 @@ pub fn place_mines(cells: &mut Vec<Cell>, mines: usize) {
     }
 }
 
-pub fn adjacent_mines(board: &Board, index: &usize) -> i8 {
-    let mut count = 3;
-    // Check above
-    
-
-
-    
-
-
-    return count;
-}
-
 fn main() {
     // Get the board size from the user
     let mut width = String::new();
@@ -150,10 +137,10 @@ fn main() {
     for c in stdin.keys() {
         match c.unwrap() {
             Key::Ctrl('c') | Key::Char('q') => break,
-            Key::Left => game.board.selected = game.board.selected.checked_sub(1).unwrap_or(0),
-            Key::Right => game.board.selected = min(game.board.selected + 1, game.board.width * game.board.height - 1),
-            Key::Up => game.board.selected = game.board.selected.checked_sub(game.board.width).unwrap_or(game.board.selected),
-            Key::Down => game.board.selected = min(game.board.selected + game.board.width, game.board.width * game.board.height - (game.board.width - game.board.selected % game.board.width)),
+            Key::Left => game.board.selected = translate_index(0, -1, &game.board.selected, &game.board).unwrap_or(game.board.selected),
+            Key::Right => game.board.selected = translate_index(0, 1, &game.board.selected, &game.board).unwrap_or(game.board.selected),
+            Key::Up => game.board.selected = translate_index(1, 0, &game.board.selected, &game.board).unwrap_or(game.board.selected),
+            Key::Down => game.board.selected = translate_index(-1, 0, &game.board.selected, &game.board).unwrap_or(game.board.selected),
             Key::Char(' ') => {
                 if game.board.cells[game.board.selected].is_mine {
                     game.board.cells[game.board.selected].is_revealed = true;
@@ -178,6 +165,34 @@ fn main() {
     write!(stdout, "{}", termion::cursor::Show).unwrap();
 }
 
+pub fn adjacent_mines(board: &Board, index: &usize) -> i8 {
+    let mut count = 0;
+
+    let to_check = [
+        translate_index(0, 1, index, board),
+        translate_index(0, -1, index, board),
+        translate_index(1, 0, index, board),
+        translate_index(1, 1, index, board),
+        translate_index(1, -1, index, board),
+        translate_index(-1, -1, index, board),
+        translate_index(-1, 0, index, board),
+        translate_index(-1, 1, index, board),
+    ];
+
+    for index in to_check {
+        match index {
+            Some(i) => {
+                if board.cells[i].is_mine {
+                    count += 1;
+                }
+            },
+            None => {}
+        }
+    }
+
+    return count;
+}
+
 fn render(game: &Minesweeper) {
     let mut screen = "".to_string();
     screen += &format!("{}{}", termion::clear::All, termion::cursor::Goto(1, 1)); 
@@ -185,4 +200,14 @@ fn render(game: &Minesweeper) {
     screen += &format!("i: {}, enter: flag, space: safe", game.board.selected);
     // Draw stdout from top left relative
     println!("{}", screen);
+}
+
+fn translate_index(vert: i8, horiz: i8, index: &usize, board: &Board) -> Option<usize> {
+    let mut new_index = *index as isize;
+    new_index += horiz as isize;
+    new_index -= (vert as isize * board.width as isize) as isize;
+    if new_index < 0 || new_index > (board.width * board.height - 1).try_into().unwrap() {
+        return None;
+    }
+    return Some(new_index as usize);
 }
