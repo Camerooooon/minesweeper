@@ -54,11 +54,11 @@ impl Display for Cell {
             if self.is_mine {
                 return write!(f, "{}", "*");
             }
-            return write!(f, "✓");
+            return write!(f, "{}", self.adjacent_mines);
         } else if self.is_flagged {
             return write!(f, "{}", "F");
         }
-        return write!(f, "{}", self.adjacent_mines);
+        return write!(f, "{}", "-");
     }
 }
 
@@ -144,7 +144,6 @@ fn main() {
             Key::Char(' ') => {
                 if game.board.cells[game.board.selected].is_mine {
                     game.board.cells[game.board.selected].is_revealed = true;
-                    render(&mut game);
                     println!("You lost!");
                     break;
                 } else {
