@@ -46,6 +46,8 @@ pub struct Cell {
     is_revealed: bool,
     is_flagged: bool,
     adjacent_mines: i8,
+    row: usize,
+    col: usize,
 }
 
 impl Display for Cell {
@@ -58,19 +60,23 @@ impl Display for Cell {
         } else if self.is_flagged {
             return write!(f, "{}", "F");
         }
-        return write!(f, "{}", "-");
+        return write!(f, "-");
     }
 }
 
 pub fn generate_cells(width: usize, height: usize) -> Vec<Cell> {
     let mut cells = Vec::new();
-    for _ in 0..width * height {
-        cells.push(Cell {
-            is_mine: false,
-            is_revealed: false,
-            is_flagged: false,
-            adjacent_mines: 0,
-        });
+    for row in 0..height {
+        for col in 0..width {
+            cells.push(Cell {
+                is_mine: false,
+                is_revealed: false,
+                is_flagged: false,
+                adjacent_mines: 0,
+                row: row,
+                col: col,
+            });
+        }
     }
     return cells;
 }
