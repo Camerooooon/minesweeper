@@ -62,7 +62,7 @@ impl Display for Cell {
     }
 }
 
-pub fn generate_cells(width: usize, height: usize, mines: usize) -> Vec<Cell> {
+pub fn generate_cells(width: usize, height: usize) -> Vec<Cell> {
     let mut cells = Vec::new();
     for _ in 0..width * height {
         cells.push(Cell {
@@ -110,7 +110,7 @@ fn main() {
         cells: vec![],
         selected: 0,
     };
-    board.cells = generate_cells(board.width, board.height, board.mines);
+    board.cells = generate_cells(board.width, board.height);
 
     // Place the mines
     place_mines(&mut board.cells, board.mines);
