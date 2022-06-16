@@ -1,12 +1,12 @@
-use std::io;
-use std::fmt::Display;
-use crate::io::stdout;
 use crate::io::stdin;
-use termion::raw::IntoRawMode;
-use std::io::Write;
-use termion::input::TermRead;
-use termion::event::Key;
+use crate::io::stdout;
 use rand::*;
+use std::fmt::Display;
+use std::io;
+use std::io::Write;
+use termion::event::Key;
+use termion::input::TermRead;
+use termion::raw::IntoRawMode;
 
 pub struct Minesweeper {
     board: Board,
@@ -29,7 +29,10 @@ impl Display for Board {
                 if row == self.selected_row && col == self.selected_col {
                     board.push_str(&format!("{}", termion::style::Bold));
                 }
-                board.push_str(&format!(" {}", &self.cells[row * self.width + col].to_string()));
+                board.push_str(&format!(
+                    " {}",
+                    &self.cells[row * self.width + col].to_string()
+                ));
                 if row == self.selected_row && col == self.selected_col {
                     board.push_str(&format!("{}", termion::style::Reset));
                 }
@@ -98,22 +101,36 @@ fn main() {
     // Get the board size from the user
     let mut width = String::new();
     println!("Enter the width of the board: ");
-    io::stdin().read_line(&mut width).expect("Failed to read line");
+    io::stdin()
+        .read_line(&mut width)
+        .expect("Failed to read line");
 
     let mut height = String::new();
     println!("Enter the height of the board: ");
-    io::stdin().read_line(&mut height).expect("Failed to read line");
+    io::stdin()
+        .read_line(&mut height)
+        .expect("Failed to read line");
 
     let mut mines = String::new();
     println!("Enter the number of mines: ");
-    io::stdin().read_line(&mut mines).expect("Failed to read line");
-
+    io::stdin()
+        .read_line(&mut mines)
+        .expect("Failed to read line");
 
     // Create the board
     let mut board = Board {
-        width: width.trim().parse::<usize>().expect("Failed to parse width (did you provide a valid number)"),
-        height: height.trim().parse::<usize>().expect("Failed to parse height (did you provide a valid number)"),
-        mines: mines.trim().parse::<usize>().expect("Failed to parse mines (did you provide a valid number)"),
+        width: width
+            .trim()
+            .parse::<usize>()
+            .expect("Failed to parse width (did you provide a valid number)"),
+        height: height
+            .trim()
+            .parse::<usize>()
+            .expect("Failed to parse height (did you provide a valid number)"),
+        mines: mines
+            .trim()
+            .parse::<usize>()
+            .expect("Failed to parse mines (did you provide a valid number)"),
         cells: vec![],
         selected_row: 0,
         selected_col: 0,
@@ -122,24 +139,29 @@ fn main() {
 
     // Place the mines
     place_mines(&mut board.cells, board.mines);
-    
+
     // Calculate all adjacent mines
     for index in 0..board.cells.len() {
         board.cells[index].adjacent_mines = adjacent_mines(&board, &board.cells[index]);
     }
 
     // Use termion to detect when movement keys are pressed
-    
+
     let stdin = stdin();
     let mut stdout = stdout().into_raw_mode().unwrap();
 
     // Clear the screen and hide the cursor
-    write!(stdout, "{}{}{}", termion::clear::All, termion::cursor::Hide, termion::cursor::Goto(1, 1)).unwrap();
+    write!(
+        stdout,
+        "{}{}{}",
+        termion::clear::All,
+        termion::cursor::Hide,
+        termion::cursor::Goto(1, 1)
+    )
+    .unwrap();
     stdout.flush().unwrap();
 
-    let mut game = Minesweeper {
-        board: board,
-    };
+    let mut game = Minesweeper { board: board };
 
     render(&mut game);
     for c in stdin.keys() {
@@ -166,8 +188,12 @@ fn main() {
                 }
             }
             Key::Char(' ') => {
-
-                let cell_index = cell_from_pos(game.board.selected_row as i8, game.board.selected_col as i8, &game.board).expect("Selected cell doesn't exist");
+                let cell_index = cell_from_pos(
+                    game.board.selected_row as i8,
+                    game.board.selected_col as i8,
+                    &game.board,
+                )
+                .expect("Selected cell doesn't exist");
                 let cell = &game.board.cells[cell_index];
                 if cell.is_mine {
                     println!("You lost!");
@@ -177,7 +203,9 @@ fn main() {
                     for cell_near_index_opt in cells_around(&game.board, &cell) {
                         match cell_near_index_opt {
                             Some(cell_near_index) => {
-                                if game.board.cells[cell_near_index].adjacent_mines <= 1 && game.board.cells[cell_near_index].is_mine == false {
+                                if game.board.cells[cell_near_index].adjacent_mines <= 1
+                                    && game.board.cells[cell_near_index].is_mine == false
+                                {
                                     game.board.cells[cell_near_index].is_revealed = true;
                                 }
                             }
@@ -188,15 +216,18 @@ fn main() {
                 }
             }
             Key::Char('f') => {
-                let cell_index = cell_from_pos(game.board.selected_row as i8, game.board.selected_col as i8, &game.board).expect("Selected cell doesn't exist");
+                let cell_index = cell_from_pos(
+                    game.board.selected_row as i8,
+                    game.board.selected_col as i8,
+                    &game.board,
+                )
+                .expect("Selected cell doesn't exist");
                 game.board.cells[cell_index].is_flagged = !game.board.cells[cell_index].is_flagged;
             }
-            Key::Char('\n') => {
-            }
-            _ => {},
+            Key::Char('\n') => {}
+            _ => {}
         }
         render(&mut game);
-
     }
 
     // Reshow the cursor
@@ -224,7 +255,7 @@ pub fn adjacent_mines(board: &Board, cell: &Cell) -> i8 {
                 if board.cells[i].is_mine {
                     count += 1;
                 }
-            },
+            }
             None => {}
         }
     }
@@ -234,9 +265,12 @@ pub fn adjacent_mines(board: &Board, cell: &Cell) -> i8 {
 
 fn render(game: &Minesweeper) {
     let mut screen = "".to_string();
-    screen += &format!("{}{}", termion::clear::All, termion::cursor::Goto(1, 1)); 
+    screen += &format!("{}{}", termion::clear::All, termion::cursor::Goto(1, 1));
     screen += &format!("{}\n", game.board);
-    screen += &format!("r: {}, c: {}, enter: flag, space: safe", game.board.selected_row, game.board.selected_col);
+    screen += &format!(
+        "r: {}, c: {}, enter: flag, space: safe",
+        game.board.selected_row, game.board.selected_col
+    );
     // Draw stdout from top left relative
     println!("{}", screen);
 }
