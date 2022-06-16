@@ -17,7 +17,8 @@ pub struct Board {
     height: usize,
     mines: usize,
     cells: Vec<Cell>,
-    selected: usize,
+    selected_row: usize,
+    selected_col: usize,
 }
 
 impl Display for Board {
@@ -25,11 +26,11 @@ impl Display for Board {
         let mut board = String::new();
         for row in 0..self.height {
             for col in 0..self.width {
-                if row * self.width + col == self.selected {
+                if row == self.selected_row && col == self.selected_col {
                     board.push_str(&format!("{}", termion::style::Bold));
                 }
                 board.push_str(&format!(" {}", &self.cells[row * self.width + col].to_string()));
-                if row * self.width + col == self.selected {
+                if row == self.selected_row && col == self.selected_col {
                     board.push_str(&format!("{}", termion::style::Reset));
                 }
             }
@@ -60,7 +61,10 @@ impl Display for Cell {
         } else if self.is_flagged {
             return write!(f, "{}", "F");
         }
-        return write!(f, "-");
+        if self.is_mine {
+            return write!(f, "{}", "*");
+        }
+        return write!(f, "{}", self.adjacent_mines);
     }
 }
 
@@ -114,7 +118,8 @@ fn main() {
         height: height.trim().parse::<usize>().expect("Failed to parse height (did you provide a valid number)"),
         mines: mines.trim().parse::<usize>().expect("Failed to parse mines (did you provide a valid number)"),
         cells: vec![],
-        selected: 0,
+        selected_row: 0,
+        selected_col: 0,
     };
     board.cells = generate_cells(board.width, board.height);
 
@@ -122,8 +127,8 @@ fn main() {
     place_mines(&mut board.cells, board.mines);
     
     // Calculate all adjacent mines
-    for index in 0..(board.height * board.width) {
-        board.cells[index].adjacent_mines = adjacent_mines(&board, &index);
+    for index in 0..board.cells.len() {
+        board.cells[index].adjacent_mines = adjacent_mines(&board, &board.cells[index]);
     }
 
     // Use termion to detect when movement keys are pressed
@@ -143,22 +148,29 @@ fn main() {
     for c in stdin.keys() {
         match c.unwrap() {
             Key::Ctrl('c') | Key::Char('q') => break,
-            Key::Left => game.board.selected = translate_index(0, -1, &game.board.selected, &game.board).unwrap_or(game.board.selected),
-            Key::Right => game.board.selected = translate_index(0, 1, &game.board.selected, &game.board).unwrap_or(game.board.selected),
-            Key::Up => game.board.selected = translate_index(1, 0, &game.board.selected, &game.board).unwrap_or(game.board.selected),
-            Key::Down => game.board.selected = translate_index(-1, 0, &game.board.selected, &game.board).unwrap_or(game.board.selected),
-            Key::Char(' ') => {
-                if game.board.cells[game.board.selected].is_mine {
-                    game.board.cells[game.board.selected].is_revealed = true;
-                    println!("You lost!");
-                    break;
-                } else {
-                    game.board.cells[game.board.selected].is_revealed = true;
-                    render(&mut game);
+            Key::Left => {
+                if game.board.selected_col > 0 {
+                    game.board.selected_col -= 1;
                 }
             }
+            Key::Right => {
+                if game.board.selected_col < game.board.width - 1 {
+                    game.board.selected_col += 1;
+                }
+            }
+            Key::Up => {
+                if game.board.selected_row > 0 {
+                    game.board.selected_row -= 1;
+                }
+            }
+            Key::Down => {
+                if game.board.selected_row < game.board.height - 1 {
+                    game.board.selected_row += 1;
+                }
+            }
+            Key::Char(' ') => {
+            }
             Key::Char('\n') => {
-                game.board.cells[game.board.selected].is_flagged = !game.board.cells[game.board.selected].is_flagged;
             }
             _ => {},
         }
@@ -170,18 +182,18 @@ fn main() {
     write!(stdout, "{}", termion::cursor::Show).unwrap();
 }
 
-pub fn adjacent_mines(board: &Board, index: &usize) -> i8 {
+pub fn adjacent_mines(board: &Board, cell: &Cell) -> i8 {
     let mut count = 0;
 
     let to_check = [
-        translate_index(0, 1, index, board),
-        translate_index(0, -1, index, board),
-        translate_index(1, 0, index, board),
-        translate_index(1, 1, index, board),
-        translate_index(1, -1, index, board),
-        translate_index(-1, -1, index, board),
-        translate_index(-1, 0, index, board),
-        translate_index(-1, 1, index, board),
+        relative_cell_index(-1, -1, cell, board),
+        relative_cell_index(-1, 0, cell, board),
+        relative_cell_index(-1, 1, cell, board),
+        relative_cell_index(0, -1, cell, board),
+        relative_cell_index(0, 1, cell, board),
+        relative_cell_index(1, -1, cell, board),
+        relative_cell_index(1, 0, cell, board),
+        relative_cell_index(1, 1, cell, board),
     ];
 
     for index in to_check {
@@ -202,17 +214,30 @@ fn render(game: &Minesweeper) {
     let mut screen = "".to_string();
     screen += &format!("{}{}", termion::clear::All, termion::cursor::Goto(1, 1)); 
     screen += &format!("{}\n", game.board);
-    screen += &format!("i: {}, enter: flag, space: safe", game.board.selected);
+    screen += &format!("r: {}, c: {}, enter: flag, space: safe", game.board.selected_row, game.board.selected_col);
     // Draw stdout from top left relative
     println!("{}", screen);
 }
 
-fn translate_index(vert: i8, horiz: i8, index: &usize, board: &Board) -> Option<usize> {
-    let mut new_index = *index as isize;
-    new_index += horiz as isize;
-    new_index -= (vert as isize * board.width as isize) as isize;
-    if new_index < 0 || new_index > (board.width * board.height - 1).try_into().unwrap() {
+fn relative_cell_index(delta_row: i8, delta_col: i8, cell: &Cell, board: &Board) -> Option<usize> {
+    let row = cell.row as i8 + delta_row;
+    let col = cell.col as i8 + delta_col;
+    if row < 0 || row >= board.height as i8 || col < 0 || col >= board.width as i8 {
         return None;
     }
-    return Some(new_index as usize);
+    for (index, iter_cell) in board.cells.iter().enumerate() {
+        if iter_cell.row as i8 == row && iter_cell.col as i8 == col {
+            return Some(index);
+        }
+    }
+    None
+}
+
+fn cell_from_pos(row: i8, col: i8, board: &Board) -> Option<usize> {
+    for (index, iter_cell) in board.cells.iter().enumerate() {
+        if iter_cell.row as i8 == row && iter_cell.col as i8 == col {
+            return Some(index);
+        }
+    }
+    None
 }
