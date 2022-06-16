@@ -61,10 +61,7 @@ impl Display for Cell {
         } else if self.is_flagged {
             return write!(f, "{}", "F");
         }
-        if self.is_mine {
-            return write!(f, "{}", "*");
-        }
-        return write!(f, "{}", self.adjacent_mines);
+        return write!(f, "{}", "@");
     }
 }
 
@@ -169,10 +166,15 @@ fn main() {
                 }
             }
             Key::Char(' ') => {
-                let cell = &game.board.cells[cell_from_pos(game.board.selected_row as i8, game.board.selected_col as i8, &game.board).expect("Selected cell doesn't exist")];
+
+                let cell_index = cell_from_pos(game.board.selected_row as i8, game.board.selected_col as i8, &game.board).expect("Selected cell doesn't exist");
+                let cell = &game.board.cells[cell_index];
                 if cell.is_mine {
                     println!("You lost!");
                     break;
+                }
+                if !cell.is_revealed {
+                    game.board.cells[cell_index].is_revealed = true;
                 }
             }
             Key::Char('\n') => {
