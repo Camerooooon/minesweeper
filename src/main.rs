@@ -169,6 +169,11 @@ fn main() {
                 }
             }
             Key::Char(' ') => {
+                let cell = &game.board.cells[cell_from_pos(game.board.selected_row as i8, game.board.selected_col as i8, &game.board).expect("Selected cell doesn't exist")];
+                if cell.is_mine {
+                    println!("You lost!");
+                    break;
+                }
             }
             Key::Char('\n') => {
             }
