@@ -174,8 +174,22 @@ fn main() {
                     break;
                 }
                 if !cell.is_revealed {
+                    for cell_near_index_opt in cells_around(&game.board, &cell) {
+                        match cell_near_index_opt {
+                            Some(cell_near_index) => {
+                                if game.board.cells[cell_near_index].adjacent_mines == 0 && game.board.cells[cell_near_index].is_mine == false {
+                                    game.board.cells[cell_near_index].is_revealed = true;
+                                }
+                            }
+                            None => {}
+                        }
+                    }
                     game.board.cells[cell_index].is_revealed = true;
                 }
+            }
+            Key::Char('f') => {
+                let cell_index = cell_from_pos(game.board.selected_row as i8, game.board.selected_col as i8, &game.board).expect("Selected cell doesn't exist");
+                game.board.cells[cell_index].is_flagged = !game.board.cells[cell_index].is_flagged;
             }
             Key::Char('\n') => {
             }
@@ -189,10 +203,8 @@ fn main() {
     write!(stdout, "{}", termion::cursor::Show).unwrap();
 }
 
-pub fn adjacent_mines(board: &Board, cell: &Cell) -> i8 {
-    let mut count = 0;
-
-    let to_check = [
+pub fn cells_around(board: &Board, cell: &Cell) -> Vec<Option<usize>> {
+    return vec![
         relative_cell_index(-1, -1, cell, board),
         relative_cell_index(-1, 0, cell, board),
         relative_cell_index(-1, 1, cell, board),
@@ -202,8 +214,11 @@ pub fn adjacent_mines(board: &Board, cell: &Cell) -> i8 {
         relative_cell_index(1, 0, cell, board),
         relative_cell_index(1, 1, cell, board),
     ];
+}
 
-    for index in to_check {
+pub fn adjacent_mines(board: &Board, cell: &Cell) -> i8 {
+    let mut count = 0;
+    for index in cells_around(&board, &cell) {
         match index {
             Some(i) => {
                 if board.cells[i].is_mine {
