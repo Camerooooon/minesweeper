@@ -177,7 +177,7 @@ fn main() {
                     for cell_near_index_opt in cells_around(&game.board, &cell) {
                         match cell_near_index_opt {
                             Some(cell_near_index) => {
-                                if game.board.cells[cell_near_index].adjacent_mines == 0 && game.board.cells[cell_near_index].is_mine == false {
+                                if game.board.cells[cell_near_index].adjacent_mines <= 1 && game.board.cells[cell_near_index].is_mine == false {
                                     game.board.cells[cell_near_index].is_revealed = true;
                                 }
                             }
