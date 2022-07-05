@@ -10,6 +10,7 @@ use termion::raw::IntoRawMode;
 
 pub struct Minesweeper {
     board: Board,
+    first_move: bool,
 }
 
 pub struct Board {
@@ -141,9 +142,7 @@ fn main() {
     place_mines(&mut board.cells, board.mines);
 
     // Calculate all adjacent mines
-    for index in 0..board.cells.len() {
-        board.cells[index].adjacent_mines = adjacent_mines(&board, &board.cells[index]);
-    }
+    calculate_adjacent_mines(&mut board);
 
     // Use termion to detect when movement keys are pressed
 
@@ -161,7 +160,7 @@ fn main() {
     .unwrap();
     stdout.flush().unwrap();
 
-    let mut game = Minesweeper { board: board };
+    let mut game = Minesweeper { board: board, first_move: true };
 
     render(&mut game);
     for c in stdin.keys() {
@@ -194,16 +193,24 @@ fn main() {
                     &game.board,
                 )
                 .expect("Selected cell doesn't exist");
-                let cell = &game.board.cells[cell_index];
-                if cell.is_mine {
-                    println!("You lost!");
-                    break;
+                if game.board.cells[cell_index].is_mine {
+                    if game.first_move {
+                        game.board.cells[cell_index].is_mine = false;
+                        calculate_adjacent_mines(&mut game.board);
+                    } else {
+                        println!("You lost!");
+                        break;
+                    }
                 }
+                let cell = &mut game.board.cells[cell_index];
                 if !cell.is_revealed {
                     if cell.adjacent_mines == 0 {
                         reveal_cells_around(&mut game.board, cell_index);
                     }
                     game.board.cells[cell_index].is_revealed = true;
+                }
+                if game.first_move {
+                    game.first_move = false;
                 }
             }
             Key::Char('f') => {
@@ -223,6 +230,12 @@ fn main() {
 
     // Reshow the cursor
     write!(stdout, "{}", termion::cursor::Show).unwrap();
+}
+
+pub fn calculate_adjacent_mines(board: &mut Board) {
+    for index in 0..board.cells.len() {
+        board.cells[index].adjacent_mines = adjacent_mines(&board, &board.cells[index]);
+    }
 }
 
 pub fn reveal_cells_around(board: &mut Board, cell_index: usize) {
