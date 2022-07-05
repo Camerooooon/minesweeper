@@ -64,7 +64,7 @@ impl Display for Cell {
         } else if self.is_flagged {
             return write!(f, "{}", "F");
         }
-        return write!(f, "{}", "@");
+        return write!(f, "{}", "\u{2022}");
     }
 }
 
@@ -200,17 +200,8 @@ fn main() {
                     break;
                 }
                 if !cell.is_revealed {
-                    for cell_near_index_opt in cells_around(&game.board, &cell) {
-                        match cell_near_index_opt {
-                            Some(cell_near_index) => {
-                                if game.board.cells[cell_near_index].adjacent_mines <= 1
-                                    && game.board.cells[cell_near_index].is_mine == false
-                                {
-                                    game.board.cells[cell_near_index].is_revealed = true;
-                                }
-                            }
-                            None => {}
-                        }
+                    if cell.adjacent_mines == 0 {
+                        reveal_cells_around(&mut game.board, cell_index);
                     }
                     game.board.cells[cell_index].is_revealed = true;
                 }
@@ -232,6 +223,25 @@ fn main() {
 
     // Reshow the cursor
     write!(stdout, "{}", termion::cursor::Show).unwrap();
+}
+
+pub fn reveal_cells_around(board: &mut Board, cell_index: usize) {
+    let cell = &board.cells[cell_index];
+    for cell_near_index_opt in cells_around(&board, &cell) {
+        match cell_near_index_opt {
+            Some(cell_near_index) => {
+                if board.cells[cell_near_index].is_mine == false
+                    && board.cells[cell_near_index].is_revealed == false
+                {
+                    board.cells[cell_near_index].is_revealed = true;
+                    if board.cells[cell_near_index].adjacent_mines == 0 {
+                        reveal_cells_around(board, cell_near_index);
+                    }
+                }
+            }
+            None => {}
+        }
+    }
 }
 
 pub fn cells_around(board: &Board, cell: &Cell) -> Vec<Option<usize>> {
